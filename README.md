@@ -2,6 +2,12 @@
 
 World-class audio deepfake detection system using pyramidal BiLSTM architecture with comprehensive augmentation pipeline.
 
+## 🏗️ System Architecture
+
+![Pyramidal BiLSTM Architecture](pyramidal_bilstm_architecture.jpg)
+
+*Complete system architecture showing data flow from audio input through pyramidal BiLSTM layers to final classification output*
+
 ## 🎯 Features
 
 - **Pyramidal BiLSTM Architecture**: 2-3 pyramid layers with TF-safe downsampling
@@ -70,10 +76,11 @@ for-rerecorded/
 
 ## 📁 Project Structure
 
-- `krrish.py` - Main training script (2458 lines)
+- `krrish.py` - Main training script (2,633 lines)
 - `pyproject.toml` - Poetry configuration with locked dependencies
 - `poetry.lock` - Exact dependency versions for reproducibility
-- `create_architecture_diagram.py` - Architecture visualization
+- `pyramidal_bilstm_architecture.jpg` - System architecture diagram
+- `create_architecture_diagram.py` - Architecture visualization generator
 - `pyramidal_bilstm_deepfake_paper.tex` - Research paper
 
 ## 🔧 Development
