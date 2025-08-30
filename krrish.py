@@ -1,4 +1,140 @@
 import os, random, glob, numpy as np, librosa, tensorflow as tf
+import logging
+import sys
+from datetime import datetime
+
+# ------------------------------
+# Logging Setup
+# ------------------------------
+def setup_logging():
+    """Set up comprehensive logging to both console and file."""
+    # Create logs directory if it doesn't exist
+    log_dir = "logs"
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    
+    # Create timestamped log filename
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_filename = f"{log_dir}/pyramidal_bilstm_training_{timestamp}.log"
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S',
+        handlers=[
+            logging.FileHandler(log_filename, mode='w', encoding='utf-8'),
+            logging.StreamHandler(sys.stdout)
+        ]
+    )
+    
+    # Create a custom logger
+    logger = logging.getLogger('pyramidal_bilstm')
+    
+    # Log startup information
+    logger.info("="*80)
+    logger.info("PYRAMIDAL BiLSTM AUDIO DEEPFAKE DETECTION SYSTEM")
+    logger.info("="*80)
+    logger.info(f"Log file created: {log_filename}")
+    logger.info(f"Python version: {sys.version}")
+    logger.info(f"TensorFlow version: {tf.__version__}")
+    logger.info(f"NumPy version: {np.__version__}")
+    logger.info(f"Librosa version: {librosa.__version__}")
+    logger.info("="*80)
+    
+    return logger, log_filename
+
+# Initialize logging
+logger, current_log_file = setup_logging()
+
+# Override print function to also log to file
+original_print = print
+def log_print(*args, **kwargs):
+    """Enhanced print function that logs to both console and file."""
+    # Convert all args to strings and join them
+    message = ' '.join(str(arg) for arg in args)
+    
+    # Log the message
+    logger.info(message)
+    
+    # Also call original print for immediate console output formatting
+    original_print(*args, **kwargs)
+
+# Replace built-in print
+print = log_print
+
+# ------------------------------
+# Logging Utility Functions
+# ------------------------------
+def log_model_summary(model, model_name="Pyramidal BiLSTM"):
+    """Log detailed model summary and architecture information."""
+    print(f"\n{'='*60}")
+    print(f"MODEL SUMMARY: {model_name}")
+    print(f"{'='*60}")
+    
+    # Get model summary as string
+    summary_lines = []
+    model.summary(print_fn=lambda x: summary_lines.append(x))
+    
+    for line in summary_lines:
+        print(line)
+    
+    # Count parameters
+    total_params = model.count_params()
+    trainable_params = sum([np.prod(var.shape) for var in model.trainable_weights])
+    non_trainable_params = total_params - trainable_params
+    
+    print(f"\nModel Parameters:")
+    print(f"  Total parameters: {total_params:,}")
+    print(f"  Trainable parameters: {trainable_params:,}")
+    print(f"  Non-trainable parameters: {non_trainable_params:,}")
+    print(f"{'='*60}")
+
+def log_experiment_results(results, experiment_name):
+    """Log comprehensive experiment results."""
+    print(f"\n{'='*80}")
+    print(f"EXPERIMENT RESULTS: {experiment_name}")
+    print(f"{'='*80}")
+    
+    if isinstance(results, dict):
+        for key, value in results.items():
+            if isinstance(value, (int, float)):
+                print(f"  {key}: {value:.4f}")
+            elif isinstance(value, str):
+                print(f"  {key}: {value}")
+            elif isinstance(value, list) and len(value) > 0:
+                if isinstance(value[0], (int, float)):
+                    print(f"  {key}: [{value[0]:.4f}, {value[1]:.4f}]")
+                else:
+                    print(f"  {key}: {value}")
+            else:
+                print(f"  {key}: {value}")
+    else:
+        print(f"Results: {results}")
+    
+    print(f"{'='*80}")
+
+def log_final_summary():
+    """Log final session summary and provide log file location."""
+    print(f"\n{'='*80}")
+    print("TRAINING SESSION COMPLETED")
+    print(f"{'='*80}")
+    print(f"📝 Complete log saved to: {current_log_file}")
+    print(f"🕒 Session duration: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"🔧 All outputs (training progress, model summaries, metrics) are saved")
+    print(f"📊 Log file includes:")
+    print(f"   • Complete model architecture details")
+    print(f"   • Training progress and epoch-by-epoch metrics") 
+    print(f"   • Comprehensive evaluation results")
+    print(f"   • Cross-validation and hyperparameter optimization logs")
+    print(f"   • System information and configuration")
+    print(f"💾 Use this log file for:")
+    print(f"   • Reproducing experiments")
+    print(f"   • Debugging and performance analysis")
+    print(f"   • Research documentation and reporting")
+    print(f"   • Comparing different model configurations")
+    print(f"{'='*80}")
+
 try:
     from scipy import stats
     SCIPY_AVAILABLE = True
@@ -813,11 +949,14 @@ def train_and_evaluate_model(num_pyramid_layers, X_train, y_train, X_val, y_val,
             )
     else:
         print("🔨 Building new model (no checkpoint found)...")
-        model = build_pyramidal_bilstm(
-            (X_train.shape[1], X_train.shape[2]), 
-            base_units=128, 
-            num_pyramid_layers=num_pyramid_layers
-            )
+    model = build_pyramidal_bilstm(
+        (X_train.shape[1], X_train.shape[2]), 
+        base_units=128, 
+        num_pyramid_layers=num_pyramid_layers
+    )
+    
+    # Log model architecture details
+    log_model_summary(model, f"Pyramidal BiLSTM ({num_pyramid_layers} layers)")
     
     # Custom callback to save each epoch with unique ID
     class EpochCheckpoint(tf.keras.callbacks.Callback):
@@ -1595,6 +1734,9 @@ def train_optimized_model(best_params, X_train, y_train, X_val, y_val, X_test, y
         **{k: v for k, v in best_params.items() if k != 'batch_size'}
     )
     
+    # Log optimized model architecture
+    log_model_summary(model, "Optimized Pyramidal BiLSTM")
+    
     # Use optimized batch size
     batch_size = best_params.get('batch_size', 8)
     
@@ -1603,6 +1745,9 @@ def train_optimized_model(best_params, X_train, y_train, X_val, y_val, X_test, y
         model, X_train, y_train, X_val, y_val, X_test, y_test,
         batch_size=batch_size, config_name="OPTIMIZED"
     )
+    
+    # Log optimization experiment results
+    log_experiment_results(results, f"Hyperparameter Optimized ({optimization_results['n_trials']} trials)")
     
     return results, trained_model
 
@@ -1812,16 +1957,28 @@ def create_tf_dataset(file_paths, labels, batch_size=8, max_seconds=2.0,
         dataset = dataset.batch(batch_size)
     
     # Pad sequences within batches (handle variable lengths)
+    # Use TensorFlow-native operations for graph compatibility
+    def pad_batch_sequences(features, labels):
+        # Get batch size and max length in this batch
+        batch_size = tf.shape(features)[0]
+        max_len = tf.reduce_max(tf.map_fn(lambda x: tf.shape(x)[0], features, dtype=tf.int32))
+        
+        # Pad each sequence in the batch to max_len
+        padded_features = tf.map_fn(
+            lambda x: tf.pad(
+                x, 
+                [[0, max_len - tf.shape(x)[0]], [0, 0]], 
+                mode='CONSTANT', 
+                constant_values=0.0
+            ),
+            features,
+            dtype=tf.float32
+        )
+        
+        return padded_features, labels
+    
     dataset = dataset.map(
-        lambda features, labels: (
-            tf.keras.utils.pad_sequences(
-                features, 
-                padding='post', 
-                dtype='float32',
-                value=0.0
-            ), 
-            labels
-        ),
+        pad_batch_sequences,
         num_parallel_calls=num_parallel_calls
     )
     
@@ -2127,6 +2284,9 @@ single_split_results, single_model = train_and_evaluate_model(
     2, X_train, y_train, X_val, y_val, X_test, y_test
 )
 
+# Log single split experiment results
+log_experiment_results(single_split_results, "Single Split Validation")
+
 # Clean up memory
 del single_model
 tf.keras.backend.clear_session()
@@ -2150,6 +2310,9 @@ cv_results = stratified_kfold_cv(
     X_cv_data, y_cv_data, X_test_list, y_test,
     num_pyramid_layers=2, k_folds=5, random_state=42
 )
+
+# Log cross-validation experiment results
+log_experiment_results(cv_results, "5-Fold Cross-Validation")
 
 # Option 3: Hyperparameter Optimization Approach
 print(f"\n{'='*90}")
@@ -2204,11 +2367,18 @@ try:
     input_shape_dynamic = (None, n_mels)  # Variable time dimension for tf.data
     tfdata_model = build_pyramidal_bilstm(input_shape_dynamic, num_pyramid_layers=2)
     
+    # Log tf.data model architecture
+    log_model_summary(tfdata_model, "TF.Data Pyramidal BiLSTM")
+    
     # Train with tf.data pipeline
     tfdata_training_results = train_with_tf_data_pipeline(
         tfdata_model, dataset_info,
         epochs=100, config_name="TF_DATA_OPTIMIZED"
     )
+    
+    # Log tf.data pipeline experiment results
+    if tfdata_training_results:
+        log_experiment_results(tfdata_training_results, "TF.Data Pipeline Optimized")
     
     # Evaluate tf.data model
     tfdata_evaluation_results = evaluate_tf_data_model(
@@ -2453,6 +2623,11 @@ print("  - 4 complete approaches: Manual, K-Fold, Hyperparameter, TF.Data")
 print("  - Performance ranking with medal system")
 print("  - Production deployment recommendations")
 print("  - Scalability and efficiency analysis")
+
+# Final execution summary
 print("• Expected improvement: 30-45% accuracy boost vs baseline")
 print(f"Dataset: {len(y_train)} training, {len(y_val)} validation, {len(y_test)} test samples.")
 print("WORLD-CLASS pipeline with automated optimization, production scalability & research rigor.")
+
+# Log the final session summary
+log_final_summary()
